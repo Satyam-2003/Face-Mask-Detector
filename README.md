@@ -11,3 +11,475 @@ Continuing with the implementation, the opencv module is integrated for proficie
 
 # Step 4:
 Following the preparatory steps, the model undergoes training, resulting in a remarkable achievement of 96% accuracy. This high level of accuracy attests to the efficacy of the implemented machine learning model in effectively discerning between masked and unmasked faces. The Face Mask Detector project thus stands as a testament to the seamless integration of advanced technologies and methodologies to address a pertinent real-world challenge.
+
+import os
+
+pip install tensorflow
+
+pip install keras
+
+import keras
+
+print(keras.__version__)
+2.15.0
+
+import tensorflow as tf
+
+print(tf.__version__)
+2.15.0
+
+categories = ['With_Mask','Without_Mask']
+
+import zipfile
+import shutil
+​
+zip_path = 'train.zip'  # Replace with the actual name of your zip file
+extract_path = 'train'  # Replace with the desired extraction folder
+​
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall(extract_path)
+​
+print(f"Folder '{zip_path}' has been extracted to '{extract_path}'.")
+​
+Folder 'train.zip' has been extracted to 'train'.
+
+pip install opencv-python
+
+path = 'train/train/With_Mask'
+if os.path.exists(path):
+    print(f"The folder '{path}' exists.")
+else:
+    print(f"The folder '{path}' does not exist.")
+The folder 'train/train/With_Mask' exists.
+
+import os
+import cv2
+import numpy as np
+​
+data = []
+valid_extensions = ['.jpg', '.jpeg', '.png']  # Add more extensions if needed
+​
+for category in categories:
+    path = os.path.join('train/train', category)
+    
+    label = categories.index(category)
+    
+    for file in os.listdir(path):
+        img_path = os.path.join(path, file)
+        
+        # Check if the file has a valid image extension
+        if any(file.lower().endswith(ext) for ext in valid_extensions):
+            # Load the image
+            img = cv2.imread(img_path)
+            
+            # Check if the image is loaded successfully
+            if img is not None:
+                # Resize the image
+                img = cv2.resize(img, (224, 224))
+                
+                # Append the image and label to the data
+                data.append([img,label])
+            else:
+                print(f"Error loading image: {img_path}")
+        else:
+            print(f"Skipping non-image file: {img_path}")
+            
+            print(img.shape)
+​
+Skipping non-image file: train/train/With_Mask/.DS_Store
+(224, 224, 3)
+Skipping non-image file: train/train/Without_Mask/.DS_Store
+(224, 224, 3)
+
+print(img.shape)
+(224, 224, 3)
+
+len(data)
+1026
+
+import random
+
+random.shuffle(data)
+
+X = []
+Y = []
+​
+for item in data:
+    features, label = item[:2]  # Assuming the first two elements of each item are features and label
+    
+    # Ensure features is a 2D array
+    if len(features.shape) == 1:
+        features = features.reshape((1, -1))  # Reshape to a row vector
+    
+    X.append(features)
+    Y.append(label)
+​
+# Convert X to a 3D array and Y to a 1D array
+X = np.array(X)
+Y = np.array(Y)
+​
+
+len(X)
+1026
+
+X.shape
+(1026, 224, 224, 3)
+
+Y.shape
+(1026,)
+
+X = X/255.0
+
+X
+
+pip install scikit-learn
+
+from sklearn.model_selection import train_test_split
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+
+X_train.shape
+(820, 224, 224, 3)
+
+X_test.shape
+(206, 224, 224, 3)
+
+from keras.applications.vgg16 import VGG16
+
+vgg = VGG16()
+
+vgg.summary()
+Model: "vgg16"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ input_1 (InputLayer)        [(None, 224, 224, 3)]     0         
+                                                                 
+ block1_conv1 (Conv2D)       (None, 224, 224, 64)      1792      
+                                                                 
+ block1_conv2 (Conv2D)       (None, 224, 224, 64)      36928     
+                                                                 
+ block1_pool (MaxPooling2D)  (None, 112, 112, 64)      0         
+                                                                 
+ block2_conv1 (Conv2D)       (None, 112, 112, 128)     73856     
+                                                                 
+ block2_conv2 (Conv2D)       (None, 112, 112, 128)     147584    
+                                                                 
+ block2_pool (MaxPooling2D)  (None, 56, 56, 128)       0         
+                                                                 
+ block3_conv1 (Conv2D)       (None, 56, 56, 256)       295168    
+                                                                 
+ block3_conv2 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_conv3 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_pool (MaxPooling2D)  (None, 28, 28, 256)       0         
+                                                                 
+ block4_conv1 (Conv2D)       (None, 28, 28, 512)       1180160   
+                                                                 
+ block4_conv2 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_conv3 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_pool (MaxPooling2D)  (None, 14, 14, 512)       0         
+                                                                 
+ block5_conv1 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv2 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv3 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_pool (MaxPooling2D)  (None, 7, 7, 512)         0         
+                                                                 
+ flatten (Flatten)           (None, 25088)             0         
+                                                                 
+ fc1 (Dense)                 (None, 4096)              102764544 
+                                                                 
+ fc2 (Dense)                 (None, 4096)              16781312  
+                                                                 
+ predictions (Dense)         (None, 1000)              4097000   
+                                                                 
+=================================================================
+Total params: 138357544 (527.79 MB)
+Trainable params: 138357544 (527.79 MB)
+Non-trainable params: 0 (0.00 Byte)
+_________________________________________________________________
+
+from keras import Sequential
+
+model = Sequential()
+
+for layer in vgg.layers[:-1]:
+    model.add(layer)
+
+model.summary()
+Model: "sequential"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ block1_conv1 (Conv2D)       (None, 224, 224, 64)      1792      
+                                                                 
+ block1_conv2 (Conv2D)       (None, 224, 224, 64)      36928     
+                                                                 
+ block1_pool (MaxPooling2D)  (None, 112, 112, 64)      0         
+                                                                 
+ block2_conv1 (Conv2D)       (None, 112, 112, 128)     73856     
+                                                                 
+ block2_conv2 (Conv2D)       (None, 112, 112, 128)     147584    
+                                                                 
+ block2_pool (MaxPooling2D)  (None, 56, 56, 128)       0         
+                                                                 
+ block3_conv1 (Conv2D)       (None, 56, 56, 256)       295168    
+                                                                 
+ block3_conv2 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_conv3 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_pool (MaxPooling2D)  (None, 28, 28, 256)       0         
+                                                                 
+ block4_conv1 (Conv2D)       (None, 28, 28, 512)       1180160   
+                                                                 
+ block4_conv2 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_conv3 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_pool (MaxPooling2D)  (None, 14, 14, 512)       0         
+                                                                 
+ block5_conv1 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv2 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv3 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_pool (MaxPooling2D)  (None, 7, 7, 512)         0         
+                                                                 
+ flatten (Flatten)           (None, 25088)             0         
+                                                                 
+ fc1 (Dense)                 (None, 4096)              102764544 
+                                                                 
+ fc2 (Dense)                 (None, 4096)              16781312  
+                                                                 
+=================================================================
+Total params: 134260544 (512.16 MB)
+Trainable params: 134260544 (512.16 MB)
+Non-trainable params: 0 (0.00 Byte)
+_________________________________________________________________
+
+for layer in model.layers:
+    layer.trainable = False
+
+model.summary()
+Model: "sequential"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ block1_conv1 (Conv2D)       (None, 224, 224, 64)      1792      
+                                                                 
+ block1_conv2 (Conv2D)       (None, 224, 224, 64)      36928     
+                                                                 
+ block1_pool (MaxPooling2D)  (None, 112, 112, 64)      0         
+                                                                 
+ block2_conv1 (Conv2D)       (None, 112, 112, 128)     73856     
+                                                                 
+ block2_conv2 (Conv2D)       (None, 112, 112, 128)     147584    
+                                                                 
+ block2_pool (MaxPooling2D)  (None, 56, 56, 128)       0         
+                                                                 
+ block3_conv1 (Conv2D)       (None, 56, 56, 256)       295168    
+                                                                 
+ block3_conv2 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_conv3 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_pool (MaxPooling2D)  (None, 28, 28, 256)       0         
+                                                                 
+ block4_conv1 (Conv2D)       (None, 28, 28, 512)       1180160   
+                                                                 
+ block4_conv2 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_conv3 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_pool (MaxPooling2D)  (None, 14, 14, 512)       0         
+                                                                 
+ block5_conv1 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv2 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv3 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_pool (MaxPooling2D)  (None, 7, 7, 512)         0         
+                                                                 
+ flatten (Flatten)           (None, 25088)             0         
+                                                                 
+ fc1 (Dense)                 (None, 4096)              102764544 
+                                                                 
+ fc2 (Dense)                 (None, 4096)              16781312  
+                                                                 
+=================================================================
+Total params: 134260544 (512.16 MB)
+Trainable params: 0 (0.00 Byte)
+Non-trainable params: 134260544 (512.16 MB)
+_________________________________________________________________
+
+from keras.layers import Dense
+
+model.add(Dense(1,activation='sigmoid'))  
+
+model.summary()
+Model: "sequential"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ block1_conv1 (Conv2D)       (None, 224, 224, 64)      1792      
+                                                                 
+ block1_conv2 (Conv2D)       (None, 224, 224, 64)      36928     
+                                                                 
+ block1_pool (MaxPooling2D)  (None, 112, 112, 64)      0         
+                                                                 
+ block2_conv1 (Conv2D)       (None, 112, 112, 128)     73856     
+                                                                 
+ block2_conv2 (Conv2D)       (None, 112, 112, 128)     147584    
+                                                                 
+ block2_pool (MaxPooling2D)  (None, 56, 56, 128)       0         
+                                                                 
+ block3_conv1 (Conv2D)       (None, 56, 56, 256)       295168    
+                                                                 
+ block3_conv2 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_conv3 (Conv2D)       (None, 56, 56, 256)       590080    
+                                                                 
+ block3_pool (MaxPooling2D)  (None, 28, 28, 256)       0         
+                                                                 
+ block4_conv1 (Conv2D)       (None, 28, 28, 512)       1180160   
+                                                                 
+ block4_conv2 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_conv3 (Conv2D)       (None, 28, 28, 512)       2359808   
+                                                                 
+ block4_pool (MaxPooling2D)  (None, 14, 14, 512)       0         
+                                                                 
+ block5_conv1 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv2 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_conv3 (Conv2D)       (None, 14, 14, 512)       2359808   
+                                                                 
+ block5_pool (MaxPooling2D)  (None, 7, 7, 512)         0         
+                                                                 
+ flatten (Flatten)           (None, 25088)             0         
+                                                                 
+ fc1 (Dense)                 (None, 4096)              102764544 
+                                                                 
+ fc2 (Dense)                 (None, 4096)              16781312  
+                                                                 
+ dense (Dense)               (None, 1)                 4097      
+                                                                 
+=================================================================
+Total params: 134264641 (512.18 MB)
+Trainable params: 4097 (16.00 KB)
+Non-trainable params: 134260544 (512.16 MB)
+_________________________________________________________________
+
+from keras.optimizers import Adam
+
+model.compile(optimizer='Adam',loss ='binary_crossentropy',metrics=['accuracy'])
+
+model.fit(X_train,Y_train,epochs=5,validation_data=(X_test,Y_test))
+Epoch 1/5
+26/26 [==============================] - 292s 11s/step - loss: 0.6879 - accuracy: 0.5695 - val_loss: 0.4991 - val_accuracy: 0.8447
+Epoch 2/5
+26/26 [==============================] - 276s 11s/step - loss: 0.4571 - accuracy: 0.8134 - val_loss: 0.3676 - val_accuracy: 0.8883
+Epoch 3/5
+26/26 [==============================] - 277s 11s/step - loss: 0.3336 - accuracy: 0.9073 - val_loss: 0.2921 - val_accuracy: 0.9223
+Epoch 4/5
+26/26 [==============================] - 280s 11s/step - loss: 0.2876 - accuracy: 0.9232 - val_loss: 0.2772 - val_accuracy: 0.9078
+Epoch 5/5
+26/26 [==============================] - 291s 11s/step - loss: 0.2560 - accuracy: 0.9268 - val_loss: 0.2477 - val_accuracy: 0.9126
+<keras.src.callbacks.History at 0x7ff0d8e5f7f0>
+
+# Model have an accuracy of 91%
+
+import cv2
+
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    
+    img = cv2.resize(frame,(224,224))
+    
+    Y_pred = detect_face_mask(img)
+    
+    if Y_pred == 0:
+        
+        draw_label(frame,'MASK',(50,50),(0,255,0))
+        
+    else:
+        
+        draw_label(frame,'NO MASK',(50,50),(0,0,255))
+        
+    
+    cv2.imshow('Window',frame)
+    
+    if cv2.waitKey(1) & 0xFF == ord('x'):
+        break
+        
+        cv2.destroyAllWindows()
+1/1 [==============================] - 5s 5s/step
+1/1 [==============================] - 0s 483ms/step
+1/1 [==============================] - 0s 430ms/step
+1/1 [==============================] - 0s 350ms/step
+1/1 [==============================] - 0s 415ms/step
+1/1 [==============================] - 0s 417ms/step
+1/1 [==============================] - 1s 599ms/step
+1/1 [==============================] - 0s 385ms/step
+1/1 [==============================] - 0s 351ms/step
+1/1 [==============================] - 0s 332ms/step
+1/1 [==============================] - 0s 350ms/step
+1/1 [==============================] - 0s 336ms/step
+1/1 [==============================] - 0s 375ms/step
+1/1 [==============================] - 0s 374ms/step
+1/1 [==============================] - 0s 374ms/step
+1/1 [==============================] - 0s 370ms/step
+1/1 [==============================] - 0s 397ms/step
+1/1 [==============================] - 0s 366ms/step
+1/1 [==============================] - 0s 377ms/step
+1/1 [==============================] - 0s 380ms/step
+1/1 [==============================] - 0s 426ms/step
+1/1 [==============================] - 0s 425ms/step
+1/1 [==============================] - 0s 419ms/step
+1/1 [==============================] - 0s 408ms/step
+1/1 [==============================] - 0s 420ms/step
+1/1 [==============================] - 0s 417ms/step
+1/1 [==============================] - 1s 509ms/step
+
+import numpy as np
+​
+def detect_face_mask(img):
+    # Assuming model is your Keras Sequential model
+    img_array = np.array([img])  # Convert img to a NumPy array and add a batch dimension
+​
+    Y_pred_probabilities = model.predict(img_array)  # Get the predicted probabilities for each class
+​
+    # Assuming it's a binary classification problem, you can round the probabilities
+    Y_pred_classes = (Y_pred_probabilities > 0.5).astype(int)
+​
+    return Y_pred_classes[0][0]
+
+sample01 = cv2.imread('Sample/Sample/Sample1.jpg')
+sample01 = cv2.resize(sample01,(224,224))
+
+detect_face_mask(sample01)
+1/1 [==============================] - 0s 409ms/step
+0
+
+import cv2
+​
+def draw_label(img, text, pos, bg_color):
+    text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 1)
+​
+    end_X = pos[0] + text_size[0][0] + 2
+    end_Y = pos[1] + text_size[0][1] - 2
+​
+    cv2.rectangle(img, pos, (end_X, end_Y), bg_color, cv2.FILLED)
+    cv2.putText(img, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1, cv2.LINE_AA)
+​
